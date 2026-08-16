@@ -1,0 +1,62 @@
+{
+  "id": "dsh.web-bridge",
+  "name": "Web Bridge",
+  "version": "0.1.0",
+  "kind": "mcp-server",
+  "description": "使用真实浏览器的自动化 MCP server：导航、点击、填表、截图、执行 JS，以无障碍树快照为 agent 提供页面视野。",
+  "entry": "dist/index.js",
+  "runtime": {
+    "engine": "node",
+    "minVersion": "20"
+  },
+  "transport": {
+    "type": "stdio",
+    "flags": []
+  },
+  "config": {
+    "envPrefix": "WEB_BRIDGE_",
+    "schema": {
+      "browser": { "type": "enum", "values": ["chromium", "firefox", "webkit"], "default": "chromium" },
+      "headless": { "type": "boolean", "default": true },
+      "viewport": { "type": "string", "format": "WIDTHxHEIGHT", "default": "1280x720" },
+      "executable": { "type": "string" },
+      "userDataDir": { "type": "string" },
+      "proxy": { "type": "string" },
+      "locale": { "type": "string" },
+      "timezone": { "type": "string" },
+      "userAgent": { "type": "string" },
+      "ignoreHTTPSErrors": { "type": "boolean", "default": false },
+      "sandbox": { "type": "boolean", "default": true },
+      "permissions": { "type": "string-list", "default": [] },
+      "actionTimeout": { "type": "integer-ms", "default": 10000 },
+      "navTimeout": { "type": "integer-ms", "default": 60000 },
+      "settleMs": { "type": "integer-ms", "default": 500 },
+      "storageState": { "type": "string" },
+      "testIdAttr": { "type": "string", "default": "data-testid" }
+    }
+  },
+  "tools": [
+    { "name": "web_open", "title": "打开页面" },
+    { "name": "web_back", "title": "后退" },
+    { "name": "web_forward", "title": "前进" },
+    { "name": "web_refresh", "title": "刷新" },
+    { "name": "web_click", "title": "点击" },
+    { "name": "web_fill", "title": "填写输入" },
+    { "name": "web_type", "title": "键入文本" },
+    { "name": "web_press", "title": "按键" },
+    { "name": "web_select", "title": "下拉选择" },
+    { "name": "web_hover", "title": "悬停" },
+    { "name": "web_scroll", "title": "滚动" },
+    { "name": "web_snapshot", "title": "页面快照" },
+    { "name": "web_screenshot", "title": "截图" },
+    { "name": "web_status", "title": "会话状态" },
+    { "name": "web_evaluate", "title": "执行脚本" },
+    { "name": "web_resize", "title": "调整视口" },
+    { "name": "web_tab_new", "title": "新建标签页" },
+    { "name": "web_tab_list", "title": "标签页列表" },
+    { "name": "web_tab_switch", "title": "切换标签页" },
+    { "name": "web_tab_close", "title": "关闭标签页" },
+    { "name": "web_wait", "title": "等待" },
+    { "name": "web_shutdown", "title": "关闭浏览器" }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "browser": {
+    "name": "chromium",
+    "headless": true,
+    "viewport": { "width": 1440, "height": 900 },
+    "userDataDir": "./.web-bridge-profile"
+  },
+  "context": {
+    "ignoreHTTPSErrors": false,
+    "permissions": ["geolocation", "clipboard-read"]
+  },
+  "timeouts": {
+    "action": 10000,
+    "navigation": 60000,
+    "settle": 500
+  },
+  "sandbox": true,
+  "testIdAttribute": "data-testid"
+}

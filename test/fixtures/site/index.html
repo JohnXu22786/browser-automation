@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Demo Home</title>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="index.html">首页</a>
+      <a href="docs.html">文档</a>
+    </nav>
+  </header>
+  <main>
+    <h1>欢迎来到演示站点</h1>
+    <p>这是一个用于验证浏览器自动化插件的演示页面。</p>
+    <img src="logo.png" alt="站点 logo">
+    <section>
+      <h2>登录表单</h2>
+      <form id="login">
+        <label for="username">用户名</label>
+        <input id="username" name="username" placeholder="请输入用户名">
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" placeholder="请输入密码">
+        <label for="lang">语言</label>
+        <select id="lang" name="lang">
+          <option value="en">English</option>
+          <option value="zh" selected>中文</option>
+          <option value="ja">日本語</option>
+        </select>
+        <label for="notes">备注</label>
+        <textarea id="notes" name="notes"></textarea>
+        <label><input id="remember" type="checkbox" name="remember"> 记住我</label>
+        <button id="submit" type="submit">提交表单</button>
+      </form>
+    </section>
+    <section>
+      <h2>计数器</h2>
+      <button id="counter" type="button">点击计数: 0</button>
+    </section>
+    <section>
+      <h2>常见问题</h2>
+      <details>
+        <summary>什么是 dsh？</summary>
+        <p>一个插件化的智能体运行时。</p>
+      </details>
+      <ul>
+        <li>第一项</li>
+        <li>第二项</li>
+      </ul>
+    </section>
+    <div style="height: 2000px"></div>
+  </main>
+  <footer>© 2026 演示站点</footer>
+  <script>
+    let count = 0;
+    document.getElementById('counter').addEventListener('click', () => {
+      count += 1;
+      document.getElementById('counter').textContent = '点击计数: ' + count;
+    });
+    document.getElementById('login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      document.getElementById('login').setAttribute('data-submitted', 'yes');
+    });
+  </script>
+</body>
+</html>
