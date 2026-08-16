@@ -1,3 +1,5 @@
+[English](README.en.md)
+
 # Web Bridge — 浏览器自动化 MCP server（dsh 插件）
 
 Web Bridge 是一个使用**真实浏览器**的自动化 MCP server。它让 agent 拥有浏览器的眼睛和手：打开网页、读取页面结构、点击、填表、截图、执行脚本。核心机制是**无障碍树快照**——把页面渲染成结构化文本树并给可交互元素编号，agent 无需视觉模型即可精确操作页面。
@@ -49,6 +51,14 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 ```
 
 **方式三：dsh 插件化加载（见下节）**
+
+## 在 DSH 中安装
+
+```bash
+dsh plugin --profile demo add github:JohnXu22786/browser-automation
+```
+
+将本插件以 `github:JohnXu22786/browser-automation` 加入 dsh 的 `demo` profile。授权、加载与生命周期细节见下节「dsh 插件接入说明」。
 
 ## dsh 插件接入说明
 
@@ -241,3 +251,7 @@ src/
 dsh-plugin.json  插件清单（dsh harness 接入说明见 README）
 test/           测试与夹具
 ```
+
+## 许可
+
+[MIT](LICENSE)

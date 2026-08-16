@@ -4,6 +4,7 @@
   "description": "dsh 插件：使用真实浏览器的自动化 MCP server。以无障碍树快照驱动导航、点击、填表、截图与 JS 执行，充当 agent 的眼睛和手。",
   "type": "module",
   "main": "dist/index.js",
+  "license": "MIT",
   "bin": {
     "web-bridge": "dist/index.js"
   },
