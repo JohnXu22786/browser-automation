@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toJSONSafe } from '../src/scripting.js';
-import { parsePositiveInt } from '../src/util.js';
+import { guardTimeout, parseEnum, parseNonNegativeInt, parsePositiveInt, validatePageUrl } from '../src/util.js';
 import { parseSelector } from '../src/locators.js';
 import { ToolError } from '../src/errors.js';
 
@@ -69,6 +69,55 @@ test('parsePositiveInt 校验', () => {
   assert.throws(() => parsePositiveInt(undefined, 'timeout'), ToolError);
   assert.equal(parsePositiveInt(3, 'n', 3), 3); // 等于上限时合法
   assert.throws(() => parsePositiveInt(5, 'n', 3), ToolError); // 超过上限
+});
+
+test('parseNonNegativeInt 校验（0 表示不限制）', () => {
+  assert.equal(parseNonNegativeInt(0, 'timeout'), 0);
+  assert.equal(parseNonNegativeInt('10', 'timeout'), 10);
+  assert.throws(() => parseNonNegativeInt(-1, 'timeout'), ToolError);
+  assert.throws(() => parseNonNegativeInt(1.5, 'timeout'), ToolError);
+  assert.throws(() => parseNonNegativeInt('abc', 'timeout'), ToolError);
+  assert.throws(() => parseNonNegativeInt(null, 'timeout'), ToolError);
+  assert.equal(parseNonNegativeInt(5, 'n', 5), 5);
+  assert.throws(() => parseNonNegativeInt(6, 'n', 5), ToolError);
+});
+
+test('parseEnum 校验', () => {
+  assert.equal(parseEnum('png', ['png', 'jpeg'] as const, 'format'), 'png');
+  assert.equal(parseEnum('jpeg', ['png', 'jpeg'] as const, 'format'), 'jpeg');
+  assert.throws(() => parseEnum('gif', ['png', 'jpeg'] as const, 'format'), ToolError);
+  assert.throws(() => parseEnum(42, ['png', 'jpeg'] as const, 'format'), ToolError);
+  assert.throws(() => parseEnum(null, ['png', 'jpeg'] as const, 'format'), ToolError);
+});
+
+test('validatePageUrl 支持 http/https/file/data 并去除首尾空白', () => {
+  assert.equal(validatePageUrl('https://example.com'), 'https://example.com');
+  assert.equal(validatePageUrl(' http://example.com/a b '), 'http://example.com/a b');
+  assert.equal(validatePageUrl('file:///C:/tmp/page.html'), 'file:///C:/tmp/page.html');
+  assert.equal(validatePageUrl('data:text/html,<h1>hi</h1>'), 'data:text/html,<h1>hi</h1>');
+});
+
+test('validatePageUrl 拒绝空值 / 非法格式 / 不支持的协议', () => {
+  assert.throws(() => validatePageUrl(''), ToolError);
+  assert.throws(() => validatePageUrl('   '), ToolError);
+  assert.throws(() => validatePageUrl('not a url'), ToolError);
+  assert.throws(() => validatePageUrl('http://'), ToolError);
+  assert.throws(() => validatePageUrl('ftp://example.com'), ToolError);
+  assert.throws(() => validatePageUrl('javascript:alert(1)'), ToolError);
+  assert.throws(() => validatePageUrl(null), ToolError);
+  assert.throws(() => validatePageUrl(42), ToolError);
+});
+
+test('guardTimeout 透传成功值并包含错误信息', async () => {
+  assert.equal(await guardTimeout(Promise.resolve('ok'), '点击'), 'ok');
+  await assert.rejects(
+    guardTimeout(Promise.reject(new Error('Timeout 30000ms exceeded.')), '点击'),
+    (err: unknown) => err instanceof ToolError && err.kind === 'timeout' && /点击/.test(String(err.message)),
+  );
+  await assert.rejects(
+    guardTimeout(Promise.reject(new Error('regular failure')), '导航'),
+    (err: unknown) => err instanceof Error && !(err instanceof ToolError) && /regular failure/.test(err.message),
+  );
 });
 
 test('parseSelector 前缀解析', () => {
