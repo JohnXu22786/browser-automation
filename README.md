@@ -60,6 +60,20 @@ dsh plugin --profile demo add github:JohnXu22786/browser-automation
 
 Adds this plugin to the dsh `demo` profile from `github:JohnXu22786/browser-automation`. See the next section for authorization, loading, and lifecycle details.
 
+### Cordis bundle (dsh.bundle)
+
+As an alternative to the `dsh-plugin.json` MCP-server manifest, the repo ships
+a Cordis bundle for hosts that consume `dsh.bundle` manifests: `package.json`
+declares `dsh.bundle.patch` → `cordis.patch.yml`, and `index.js` is the bridge
+a dsh profile loads. The bridge spawns the built MCP server
+(`node dist/index.js`) over stdio, performs the MCP handshake, and re-exposes
+the 22 `web_*` tools to the harness — the server itself is untouched.
+
+In a source checkout `dist/` is gitignored, so the bridge runs `npm run build`
+once on first load; installed npm packages ship `dist/` in their `files` list
+and need no build step. Profile-level settings map to the same
+`WEB_BRIDGE_*` environment variables described below.
+
 ## dsh Plugin Integration
 
 This plugin follows the dsh "everything is a plugin" convention and describes itself via the `dsh-plugin.json` manifest in the root directory:
@@ -248,6 +262,8 @@ src/
   util.ts        argument validation, URL validation, timeout error classification
   tools/         22 tool implementations (grouped by responsibility)
   registry.ts    tool registry
+index.js          dsh Cordis bundle bridge (spawns dist/index.js over stdio)
+cordis.patch.yml  dsh bundle install row (id: web-bridge, name: web-bridge-mcp)
 dsh-plugin.json  plugin manifest (see README for dsh harness integration)
 test/           tests and fixtures
 ```
