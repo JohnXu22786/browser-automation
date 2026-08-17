@@ -1,0 +1,13 @@
+# web-bridge —— dsh bundle 安装行。
+#
+# dsh 读取本文件并把下面的插件行插入当前 profile 的 cordis 配置：
+#   id   web-bridge（dsh 内唯一标识）
+#   name web-bridge-mcp（引用的 npm 包名，dsh 由它加载 index.js 的 apply(ctx)）
+#
+# index.js 会以 stdio 方式启动内置的 MCP server（dist/index.js）并把其
+# 22 个 web_* 工具接入宿主。可在 config 下覆盖子项，例如：
+#   config:
+#     headless: false
+- insert:
+    - id: web-bridge
+      name: web-bridge-mcp
