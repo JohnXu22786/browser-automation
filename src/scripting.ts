@@ -75,6 +75,8 @@ function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/.*$/gm, ' ');
 }
 
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as FunctionConstructor;
+
 /**
  * 判定脚本形态。所有决策都在 Node 侧、页面执行之前完成，且 Node 侧
  * 只编译不执行，因此：
@@ -85,8 +87,9 @@ function stripComments(src: string): string {
  * 1. 函数表达式（function / async function / 箭头函数，非立即调用）
  *    → 页面内以 (script)(arg) 调用
  * 2. 合法表达式 → 页面内直接求值
- * 3. 合法语句序列 → 页面内以函数体执行（无返回值）
- * 4. 均不合法 → 抛 ToolError
+ * 3. 顶层 await 表达式 → 页面内以 async 函数求值并返回结果
+ * 4. 合法语句序列（含 async 语句序列） → 页面内以函数体执行
+ * 5. 均不合法 → 抛 ToolError
  */
 export function classifyScript(trimmed: string): ClassifiedScript {
   const fnLike =
@@ -115,6 +118,15 @@ export function classifyScript(trimmed: string): ClassifiedScript {
     new Function('arg', `return (${trimmed});`);
     return { mode: 'expr' };
   } catch {
+    // 落入顶层 await 表达式与语句序列判定
+  }
+
+  // 顶层 await 表达式形态：以 async 函数包装求值
+  try {
+    new AsyncFunction('arg', `return (${trimmed});`);
+    const makeCall = new AsyncFunction('argVal', `return (${trimmed});`);
+    return { mode: 'fn', makeCall };
+  } catch {
     // 落入语句序列判定
   }
 
@@ -123,7 +135,13 @@ export function classifyScript(trimmed: string): ClassifiedScript {
     const fn = new Function('arg', trimmed) as (a: unknown) => unknown;
     return { mode: 'body', fn };
   } catch {
-    throw new ToolError('script 语法无效，无法编译执行', 'invalid');
+    // 尝试异步语句序列形态（包含 await 的语句序列）
+    try {
+      const fn = new AsyncFunction('arg', trimmed) as (a: unknown) => unknown;
+      return { mode: 'body', fn };
+    } catch {
+      throw new ToolError('script 语法无效，无法编译执行', 'invalid');
+    }
   }
 }
 

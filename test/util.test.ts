@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toJSONSafe } from '../src/scripting.js';
+import { toJSONSafe, classifyScript } from '../src/scripting.js';
 import { guardTimeout, parseEnum, parseNonNegativeInt, parsePositiveInt, validatePageUrl } from '../src/util.js';
 import { parseSelector } from '../src/locators.js';
 import { ToolError } from '../src/errors.js';
@@ -127,4 +127,25 @@ test('parseSelector 前缀解析', () => {
   assert.deepEqual(parseSelector('#main > .card button'), { kind: 'css', value: '#main > .card button' });
   assert.deepEqual(parseSelector(''), { kind: 'css', value: '' });
   assert.deepEqual(parseSelector('textwith=notprefix'), { kind: 'css', value: 'textwith=notprefix' });
+});
+
+test('classifyScript 形态判定（函数 / 表达式 / 语句序列 / async await）', () => {
+  // 表达式
+  assert.equal(classifyScript('1 + 2').mode, 'expr');
+  assert.equal(classifyScript('document.title').mode, 'expr');
+
+  // 函数
+  assert.equal(classifyScript('(x) => x * 2').mode, 'fn');
+  assert.equal(classifyScript('function(a) { return a + 1; }').mode, 'fn');
+  assert.equal(classifyScript('async (x) => await Promise.resolve(x)').mode, 'fn');
+
+  // 顶层 await 表达式与异步语句
+  assert.equal(classifyScript('await Promise.resolve(42)').mode, 'fn');
+  assert.equal(classifyScript('const x = await Promise.resolve(10); return x * 2;').mode, 'body');
+
+  // 语句序列
+  assert.equal(classifyScript('let a = 1; let b = 2; return a + b;').mode, 'body');
+
+  // 非法语法
+  assert.throws(() => classifyScript('{ broken syntax !!!'), ToolError);
 });
