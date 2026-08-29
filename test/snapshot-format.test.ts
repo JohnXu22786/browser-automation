@@ -72,6 +72,40 @@ test('formatTree 状态与属性展示', () => {
   assert.equal(text[7], '[7] summary "展开" (expanded)');
 });
 
+test('formatTree 校验状态展示（required / readonly / invalid）', () => {
+  const tree: RawNode[] = [
+    node({ role: 'textbox', name: '邮箱', path: 'email', required: true, invalid: true, hint: 'abc@example.com' }),
+    node({ role: 'textbox', name: '只读字段', path: 'ro', readonly: true, value: '固定值' }),
+  ];
+  const text = formatTree(tree).split('\n');
+  assert.equal(text[0], '[1] textbox "邮箱" (required) (invalid) (placeholder: "abc@example.com")');
+  assert.equal(text[1], '[2] textbox "只读字段" (readonly) (value: "固定值")');
+});
+
+test('collectRefs 支持 maxDepth 并与 formatTree 保持完全一致', () => {
+  const tree: RawNode[] = [
+    node({
+      role: 'form',
+      children: [
+        node({ role: 'textbox', name: '浅层', path: 'shallow' }),
+        node({
+          role: 'group',
+          children: [node({ role: 'link', name: '深处', path: 'deep' })],
+        }),
+      ],
+    }),
+  ];
+  const refsShallow = collectRefs(tree, { maxDepth: 1 });
+  assert.equal(refsShallow.size, 1);
+  assert.equal(refsShallow.get(1), 'shallow');
+  assert.equal(refsShallow.has(2), false);
+
+  const refsFull = collectRefs(tree);
+  assert.equal(refsFull.size, 2);
+  assert.equal(refsFull.get(1), 'shallow');
+  assert.equal(refsFull.get(2), 'deep');
+});
+
 test('formatTree 无名字节点省略引号', () => {
   const tree: RawNode[] = [node({ role: 'navigation' })];
   assert.equal(formatTree(tree), 'navigation');
@@ -99,3 +133,4 @@ test('空树返回空字符串', () => {
   assert.equal(formatTree([]), '');
   assert.equal(collectRefs([]).size, 0);
 });
+
