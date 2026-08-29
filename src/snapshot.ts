@@ -10,6 +10,9 @@ export interface RawNode {
   level?: number;
   checked?: boolean;
   disabled?: boolean;
+  required?: boolean;
+  readonly?: boolean;
+  invalid?: boolean;
   expanded?: boolean;
   selected?: boolean;
   password?: boolean;
@@ -67,7 +70,7 @@ export async function takeSnapshot(
     out = (await page.evaluate(compilePageWalker() as never, opts)) as WalkerOutput;
   }
 
-  const refs = collectRefs(out.nodes);
+  const refs = collectRefs(out.nodes, { maxDepth });
   const treeText = formatTree(out.nodes, { maxDepth });
   const note = out.truncated ? `\n…（节点过多，快照已在 ${out.maxNodes} 个节点处截断）` : '';
   return {
@@ -78,25 +81,26 @@ export async function takeSnapshot(
   };
 }
 
+export interface FormatOptions {
+  maxDepth?: number;
+}
+
 /** 按文档顺序为带 path 的节点分配 1 起始的引用号。 */
-export function collectRefs(nodes: RawNode[]): Map<number, string> {
+export function collectRefs(nodes: RawNode[], opts: FormatOptions = {}): Map<number, string> {
+  const maxDepth = opts.maxDepth ?? Infinity;
   const refs = new Map<number, string>();
   let next = 1;
-  const walk = (list: RawNode[]): void => {
+  const walk = (list: RawNode[], depth: number): void => {
     for (const n of list) {
       if (n.path) {
         refs.set(next, n.path);
         next += 1;
       }
-      if (n.children?.length) walk(n.children);
+      if (n.children?.length && depth < maxDepth) walk(n.children, depth + 1);
     }
   };
-  walk(nodes);
+  walk(nodes, 0);
   return refs;
-}
-
-interface FormatOptions {
-  maxDepth?: number;
 }
 
 /** 把树格式化为带缩进与状态标注的文本。 */
@@ -126,6 +130,9 @@ function lineFor(node: RawNode, depth: number, refCount: { n: number }): string 
   if (node.level !== undefined) parts.push(`(level: ${node.level})`);
   if (node.checked !== undefined) parts.push(node.checked ? '(checked)' : '(unchecked)');
   if (node.disabled) parts.push('(disabled)');
+  if (node.required) parts.push('(required)');
+  if (node.readonly) parts.push('(readonly)');
+  if (node.invalid) parts.push('(invalid)');
   if (node.selected) parts.push('(selected)');
   if (node.expanded !== undefined) parts.push(node.expanded ? '(expanded)' : '(collapsed)');
   if (node.password) parts.push('(password)');

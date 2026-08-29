@@ -145,6 +145,12 @@ function computeRole(el) {
       return 'figcaption';
     case 'dialog':
       return 'dialog';
+    case 'progress':
+      return 'progressbar';
+    case 'meter':
+      return 'meter';
+    case 'output':
+      return 'status';
     case 'p':
       return 'paragraph';
     case 'section':
@@ -155,8 +161,11 @@ function computeRole(el) {
       return 'group';
     case 'blockquote':
       return 'blockquote';
-    default:
+    default: {
+      const ce = el.getAttribute && el.getAttribute('contenteditable');
+      if (el.isContentEditable === true || ce === 'true' || ce === '') return 'textbox';
       return null;
+    }
   }
 }
 
@@ -228,6 +237,18 @@ function nodeValue(el, role) {
     const v = el.value || '';
     return v ? clampVal(v) : undefined;
   }
+  if (role === 'textbox' && tag !== 'input' && tag !== 'textarea') {
+    const txt = collapse(el.innerText || el.textContent || '');
+    return txt ? clampVal(txt) : undefined;
+  }
+  if (role === 'progressbar' || role === 'meter') {
+    const v = el.getAttribute && el.getAttribute('value');
+    return v != null && v !== '' ? clampVal(v) : undefined;
+  }
+  if (role === 'status' && tag === 'output') {
+    const txt = collapse(el.innerText || el.textContent || '');
+    return txt ? clampVal(txt) : undefined;
+  }
   if (role === 'combobox' && tag === 'select') {
     const sel = el.selectedOptions && el.selectedOptions[0];
     if (sel) return clampVal(sel.textContent || sel.text || '');
@@ -255,8 +276,17 @@ function nodeStates(el, role) {
   if (el.disabled === true || (el.getAttribute && el.getAttribute('aria-disabled') === 'true')) {
     s.disabled = true;
   }
+  if (el.required === true || (el.getAttribute && el.getAttribute('aria-required') === 'true') || (el.hasAttribute && el.hasAttribute('required'))) {
+    s.required = true;
+  }
+  if (el.readOnly === true || (el.getAttribute && el.getAttribute('aria-readonly') === 'true') || (el.hasAttribute && el.hasAttribute('readonly'))) {
+    s.readonly = true;
+  }
+  if ((el.getAttribute && el.getAttribute('aria-invalid') === 'true') || (el.validity && el.validity.valid === false)) {
+    s.invalid = true;
+  }
   const hasExpanded = el.hasAttribute && el.hasAttribute('aria-expanded');
-  if (role === 'combobox' || role === 'summary' || hasExpanded) {
+  if (role === 'combobox' || role === 'summary' || role === 'dialog' || hasExpanded) {
     if (role === 'combobox' && tag_is_select(el) && !hasExpanded) {
       // 原生 select 无 aria-expanded 时不报告展开状态
       return s;
@@ -336,6 +366,9 @@ function walkerMain(rootEl, opts) {
     const states = nodeStates(el, role);
     if (states.checked !== undefined) node.checked = states.checked;
     if (states.disabled) node.disabled = true;
+    if (states.required) node.required = true;
+    if (states.readonly) node.readonly = true;
+    if (states.invalid) node.invalid = true;
     if (states.expanded !== undefined) node.expanded = states.expanded;
     if (states.selected !== undefined) node.selected = states.selected;
     if (role === 'textbox' && el.tagName.toLowerCase() === 'input' && (el.getAttribute('type') || '').toLowerCase() === 'password') {

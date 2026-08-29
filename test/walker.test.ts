@@ -256,5 +256,35 @@ test('nodeStates 各角色状态', () => {
   const btn2 = el('button', { attrs: [['aria-expanded', 'false']] });
   assert.deepEqual(nodeStates(btn2, 'button'), { expanded: false });
   // 无 aria-expanded 的原生 select 不报告展开状态
-  assert.deepEqual(nodeStates(el('select', {}), 'combobox'), {});
+  assert.deepEqual(nodeStates(el('select', {})), {});
+  // required 状态
+  assert.deepEqual(nodeStates(el('input', { attrs: [['required', '']] })), { required: true });
+  assert.deepEqual(nodeStates(el('input', { attrs: [['aria-required', 'true']] })), { required: true });
+  // readonly 状态
+  assert.deepEqual(nodeStates(el('input', { attrs: [['readonly', '']] })), { readonly: true });
+  assert.deepEqual(nodeStates(el('input', { attrs: [['aria-readonly', 'true']] })), { readonly: true });
+  // invalid 状态
+  assert.deepEqual(nodeStates(el('input', { attrs: [['aria-invalid', 'true']] })), { invalid: true });
+  // dialog expanded 状态
+  assert.deepEqual(nodeStates(el('dialog', { attrs: [['open', '']] }), 'dialog'), { expanded: true });
 });
+
+test('computeRole HTML5 语义标签与 contenteditable', () => {
+  assert.equal(computeRole(el('progress', {})), 'progressbar');
+  assert.equal(computeRole(el('meter', {})), 'meter');
+  assert.equal(computeRole(el('output', {})), 'status');
+  assert.equal(computeRole(el('div', { attrs: [['contenteditable', 'true']] })), 'textbox');
+  assert.equal(computeRole(el('div', { attrs: [['contenteditable', '']] })), 'textbox');
+});
+
+test('nodeValue 支持 progress、meter、output 与 contenteditable', () => {
+  const p = el('progress', { attrs: [['value', '70']] });
+  assert.equal(nodeValue(p, 'progressbar'), '70');
+  const m = el('meter', { attrs: [['value', '0.85']] });
+  assert.equal(nodeValue(m, 'meter'), '0.85');
+  const out = el('output', { textContent: '计算结果：42' });
+  assert.equal(nodeValue(out, 'status'), '计算结果：42');
+  const ce = el('div', { attrs: [['contenteditable', 'true']], textContent: '富文本内容' });
+  assert.equal(nodeValue(ce, 'textbox'), '富文本内容');
+});
+
