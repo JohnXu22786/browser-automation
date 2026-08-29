@@ -101,11 +101,24 @@ export class BrowserService {
         });
       } else {
         this.browser = await this.engine().launch(this.launchBase());
+        this.browser.on('disconnected', () => {
+          this.cleanupState();
+          this.browser = null;
+        });
         this.context = await this.browser.newContext({
           ...this.contextOptions(),
           ...(this.config.storageState ? { storageState: this.config.storageState } : {}),
         });
       }
+
+      this.context.on('close', () => {
+        const b = this.browser;
+        this.cleanupState();
+        this.browser = null;
+        if (b) {
+          b.close().catch(() => undefined);
+        }
+      });
 
       if (this.config.permissions.length > 0) {
         await this.context.grantPermissions(this.config.permissions);
@@ -252,18 +265,22 @@ export class BrowserService {
     return this.closing;
   }
 
+  private cleanupState(): void {
+    this.refsByTab.clear();
+    this.tabs.clear();
+    this.pageIds.clear();
+    this.activeId = null;
+    this.context = null;
+  }
+
   private async doClose(): Promise<void> {
     // 等待在途启动完成，避免与 close 竞争产生第二个实例
     if (this.starting) {
       await this.starting.catch(() => undefined);
     }
-    this.refsByTab.clear();
-    this.tabs.clear();
-    this.pageIds.clear();
-    this.activeId = null;
     const context = this.context;
     const browser = this.browser;
-    this.context = null;
+    this.cleanupState();
     this.browser = null;
     if (browser) {
       // 独立启动的浏览器：必须关掉浏览器进程，否则子进程会阻塞事件循环
