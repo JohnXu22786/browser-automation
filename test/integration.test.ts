@@ -299,12 +299,22 @@ test('web_wait 各条件', SKIP, async (t) => {
   t.after(() => session.close());
   await call('web_open', { url: base + '/index.html' });
   await call('web_wait', { condition: 'selector', selector: '#counter', state: 'visible' });
+  const snap = textOf(await call('web_snapshot', {}));
+  const counterRef = refOf(snap, /\[(\d+)\] button "点击计数: 0"/);
+  await call('web_wait', { condition: 'selector', ref: counterRef, state: 'visible' });
+  // fn 条件判定
+  await call('web_evaluate', { script: 'setTimeout(() => { window.testReady = 123; }, 50)' });
+  await call('web_wait', { condition: 'fn', script: '() => window.testReady === 123' });
   await call('web_wait', { condition: 'sleep', ms: 100 });
   await call('web_click', { selector: 'a[href="docs.html"]' });
   await call('web_wait', { condition: 'url', url_pattern: '**/docs.html' });
   await call('web_wait', { condition: 'load' });
   await assert.rejects(
     call('web_wait', { condition: 'selector', selector: '#not-exists', timeout: 300 }),
+    ToolError
+  );
+  await assert.rejects(
+    call('web_wait', { condition: 'fn', script: '() => false', timeout: 200 }),
     ToolError
   );
 });
@@ -346,6 +356,10 @@ test('web_scroll 方向与回顶', SKIP, async (t) => {
   r = await call('web_evaluate', { script: 'scrollY' });
   assert.equal(Number(textOf(r)), 0);
   await call('web_scroll', { direction: 'into_view', selector: '#counter' });
+  const snap = textOf(await call('web_snapshot', {}));
+  const btnRef = refOf(snap, /\[(\d+)\] button "点击计数: 0"/);
+  const scrollRefResult = await call('web_scroll', { direction: 'into_view', ref: btnRef });
+  assert.match(textOf(scrollRefResult), /scrolled ref #\d+ into view/);
 });
 
 test('web_hover 悬停', SKIP, async (t) => {
