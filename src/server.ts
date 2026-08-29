@@ -27,6 +27,17 @@ function toMcpCode(kind: ErrorKind): ErrorCode {
   }
 }
 
+function sanitizeErrorMessage(err: unknown): string {
+  if (err instanceof ToolError) {
+    return err.message;
+  }
+  if (err instanceof Error) {
+    const firstLine = err.message.replace(/\x1b\[[0-9;]*m/g, '').split('\n')[0].trim();
+    return firstLine || '未知内部错误';
+  }
+  return String(err);
+}
+
 /**
  * 组装 MCP server：注册全部工具（不含传输层，便于测试）。
  */
@@ -55,8 +66,8 @@ export function createToolServer(config: BridgeConfig, session: BrowserService):
           if (err instanceof ToolError) {
             throw new McpError(toMcpCode(err.kind), err.message);
           }
-          const message = err instanceof Error ? err.message : String(err);
-          throw new McpError(ErrorCode.InternalError, `内部错误：${message}`);
+          const message = sanitizeErrorMessage(err);
+          throw new McpError(ErrorCode.InternalError, `操作失败：${message}`);
         }
       }
     );
