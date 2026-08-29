@@ -202,49 +202,50 @@ export const interactionTools: ToolDef[] = [
     name: 'web_scroll',
     title: '滚动',
     description:
-      '滚动页面或元素。direction=into_view 时将元素滚动到视野中央；提供 selector 时在元素内部滚动（或先将其带入视野）；未提供 selector 时滚动整个页面。',
+      '滚动页面或元素。direction=into_view 时将元素滚动到视野中央；提供 ref/selector 时在元素内部滚动（或先将其带入视野）；未提供时滚动整个页面。',
     permission: '仅改变滚动位置，不产生网络请求。',
     schema: {
+      ...zTarget,
       direction: z
         .enum(['up', 'down', 'left', 'right', 'top', 'bottom', 'into_view'])
         .describe('滚动方向；top/bottom 直达首尾；into_view 将元素滚入视野'),
       amount: z.number().int().min(1).max(100_000).optional().describe('步进像素，默认 600；top/bottom/into_view 忽略'),
-      selector: z.string().min(1).optional().describe('目标元素（滚动其内部或将其带入视野）'),
       timeout: zTimeout('10 秒'),
     },
     handler: async (ctx, args) => {
       const page = ctx.session.currentPage();
+      const tabId = ctx.session.currentTabId();
       const direction = parseEnum(args.direction, ['up', 'down', 'left', 'right', 'top', 'bottom', 'into_view'] as const, 'direction');
       const amount = args.amount === undefined ? 600 : parsePositiveInt(args.amount, 'amount', 100_000);
-      const selector = typeof args.selector === 'string' && args.selector.trim() !== '' ? args.selector : undefined;
+      const hasTarget = args.ref !== undefined || (typeof args.selector === 'string' && args.selector.trim() !== '');
       const timeout = actionTimeout(ctx.config, args.timeout);
 
       if (direction === 'into_view') {
-        if (!selector) throw new ToolError('into_view 需要提供 selector', 'invalid');
-        const locator = resolveLocator(page, selector, ctx.config.testIdAttribute);
-        await guardTimeout(locator.scrollIntoViewIfNeeded({ timeout }), '滚动到视野');
-        return { text: `scrolled ${selector} into view` };
+        if (!hasTarget) throw new ToolError('into_view 需要提供 ref 或 selector', 'invalid');
+        const target = resolveTarget(page, ctx.session, tabId, args);
+        await guardTimeout(target.locator.scrollIntoViewIfNeeded({ timeout }), '滚动到视野');
+        return { text: `scrolled ${target.via} into view` };
       }
 
-      if (selector) {
-        const locator = resolveLocator(page, selector, ctx.config.testIdAttribute);
+      if (hasTarget) {
+        const target = resolveTarget(page, ctx.session, tabId, args);
         await guardTimeout(
-          locator.evaluate(
+          target.locator.evaluate(
             (el, d) => {
-              const target = d as { direction: string; amount: number };
+              const t = d as { direction: string; amount: number };
               const elem = el as unknown as ScrollableElLike;
-              switch (target.direction) {
+              switch (t.direction) {
                 case 'up':
-                  elem.scrollBy({ top: -target.amount, behavior: 'auto' });
+                  elem.scrollBy({ top: -t.amount, behavior: 'auto' });
                   break;
                 case 'down':
-                  elem.scrollBy({ top: target.amount, behavior: 'auto' });
+                  elem.scrollBy({ top: t.amount, behavior: 'auto' });
                   break;
                 case 'left':
-                  elem.scrollBy({ left: -target.amount, behavior: 'auto' });
+                  elem.scrollBy({ left: -t.amount, behavior: 'auto' });
                   break;
                 case 'right':
-                  elem.scrollBy({ left: target.amount, behavior: 'auto' });
+                  elem.scrollBy({ left: t.amount, behavior: 'auto' });
                   break;
                 case 'top':
                   elem.scrollTop = 0;
@@ -256,9 +257,9 @@ export const interactionTools: ToolDef[] = [
             },
             { direction, amount }
           ),
-          `滚动 ${selector}`
+          `滚动 ${target.via}`
         );
-        return { text: `scrolled ${direction} within ${selector}` };
+        return { text: `scrolled ${direction} within ${target.via}` };
       }
 
       await page.evaluate(
