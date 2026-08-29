@@ -91,12 +91,18 @@ export const inspectionTools: ToolDef[] = [
   {
     name: 'web_status',
     title: '会话状态',
-    description: '报告浏览器会话状态：是否运行、标签页列表（含 URL 与标题）、当前活动标签页。',
+    description: '报告浏览器会话状态与诊断信息：是否运行、引擎类型、持久化状态、权限列表、标签页列表及当前活动标签页。',
     permission: '只读操作。',
     schema: {},
     handler: async (ctx) => {
       const running = ctx.session.isRunning();
-      const lines = [`running: ${running}`];
+      const lines = [
+        `running: ${running}`,
+        `engine: ${ctx.config.browserName}`,
+        `headless: ${ctx.config.headless}`,
+        `persistent: ${Boolean(ctx.config.userDataDir)}`,
+        `permissions: ${ctx.config.permissions.length ? ctx.config.permissions.join(', ') : 'none'}`,
+      ];
       if (running) {
         const { lines: tabLines, activeId } = await ctx.session.describeTabs();
         lines.push(`tabs: ${tabLines.length}`);

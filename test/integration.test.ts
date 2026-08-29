@@ -88,9 +88,13 @@ test('web_status 报告运行状态与当前页面', SKIP, async (t) => {
   t.after(() => session.close());
   const before1 = textOf(await call('web_status', {}));
   assert.match(before1, /running: false/);
+  assert.match(before1, /engine: chromium/);
+  assert.match(before1, /persistent: false/);
   await call('web_open', { url: base + '/index.html' });
   const after1 = textOf(await call('web_status', {}));
   assert.match(after1, /running: true/);
+  assert.match(after1, /engine: chromium/);
+  assert.match(after1, /tabs: 1/);
   assert.match(after1, /Demo Home/);
   assert.match(after1, /index\.html/);
 });
