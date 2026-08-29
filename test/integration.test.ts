@@ -223,6 +223,16 @@ test('web_evaluate 表达式 / 函数 / 结果净化', SKIP, async (t) => {
   const errCount = textOf(await call('web_evaluate', { script: 'globalThis.__errCount' }));
   assert.match(errCount, /1/);
 
+  // 顶层 await 表达式与 async 语句序列
+  const asyncExpr = textOf(await call('web_evaluate', { script: 'await Promise.resolve(42)' }));
+  assert.match(asyncExpr, /42/);
+  const asyncBody = textOf(
+    await call('web_evaluate', {
+      script: 'const val = await Promise.resolve("hello async"); return val.toUpperCase();',
+    })
+  );
+  assert.match(asyncBody, /HELLO ASYNC/);
+
   // 语法无效的脚本报 invalid 错误
   await assert.rejects(call('web_evaluate', { script: 'let = = =' }), ToolError);
 });
