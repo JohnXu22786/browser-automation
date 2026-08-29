@@ -256,6 +256,18 @@ test('web_screenshot 输出 png/jpeg 与保存文件', SKIP, async (t) => {
   assert.match(saved, /saved to/);
   assert.ok(fs.existsSync(outFile));
   assert.ok(fs.statSync(outFile).size > 0);
+
+  // 元素截图：按 selector 与按 ref
+  const shotBySelector = imageOf(await call('web_screenshot', { selector: '#login' }));
+  assert.equal(shotBySelector.mimeType, 'image/png');
+  const snap = textOf(await call('web_snapshot', {}));
+  const btnRef = refOf(snap, /\[(\d+)\] button "提交表单"/);
+  const shotByRef = imageOf(await call('web_screenshot', { ref: btnRef }));
+  assert.equal(shotByRef.mimeType, 'image/png');
+
+  // 整页截图
+  const fullShot = imageOf(await call('web_screenshot', { full_page: true }));
+  assert.equal(fullShot.mimeType, 'image/png');
 });
 
 test('标签页管理：新建 / 列表 / 切换 / 关闭', SKIP, async (t) => {
