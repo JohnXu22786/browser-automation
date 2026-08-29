@@ -419,3 +419,20 @@ test('快照支持 selector 子树与 max_depth', SKIP, async (t) => {
   assert.doesNotMatch(shallow, /textbox "用户名"/);
   assert.doesNotMatch(shallow, /listitem/);
 });
+
+test('外部意外关闭 context / browser 后自动清理状态并支持透明重启', SKIP, async (t) => {
+  fresh();
+  t.after(() => session.close());
+  await call('web_open', { url: base + '/index.html' });
+  assert.equal(session.isRunning(), true);
+  // 模拟底层 context 异常关闭
+  const ctx = await session.ensureStarted();
+  await ctx.close();
+  // 状态应已自动重置为未运行
+  assert.equal(session.isRunning(), false);
+  // 后续调用应自动拉起新实例
+  const r = await call('web_open', { url: base + '/index.html' });
+  assert.match(textOf(r), /title: Demo Home/);
+  assert.equal(session.isRunning(), true);
+});
+
