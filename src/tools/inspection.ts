@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { takeSnapshot, type SnapshotRequest } from '../snapshot.js';
-import { resolveLocator } from '../locators.js';
+import { resolveLocator, resolveTarget } from '../locators.js';
 import { ToolError } from '../errors.js';
 import { guardTimeout, parseEnum, parseNonNegativeInt, parsePositiveInt } from '../util.js';
 import { type ToolDef, actionTimeout, zTimeout } from './common.js';
@@ -38,13 +38,14 @@ export const inspectionTools: ToolDef[] = [
     name: 'web_screenshot',
     title: '截图',
     description:
-      '截取当前页面（视口或整页）或指定元素的图像，作为 MCP image 内容返回；可同时保存到本地文件。适合需要视觉确认的场合；日常结构化观察请优先使用 web_snapshot。',
+      '截取当前页面（视口或整页）或指定元素（ref / selector）的图像，作为 MCP image 内容返回；可同时保存到本地文件。适合需要视觉确认的场合；日常结构化观察请优先使用 web_snapshot。',
     permission: '只读页面内容；若提供 save_to 参数会向本地文件系统写入文件（路径由调用方指定）。',
     schema: {
+      ref: z.number().int().positive().optional().describe('只截取该引用编号命中的元素，与 selector 二选一'),
+      selector: z.string().min(1).optional().describe('只截取该选择器命中的元素，与 ref 二选一'),
       format: z.enum(['png', 'jpeg']).optional().describe('图像格式，默认 png'),
       quality: z.number().int().min(0).max(100).optional().describe('jpeg 质量 0-100，默认 90'),
-      full_page: z.boolean().optional().describe('截取整页而非视口，默认 false'),
-      selector: z.string().min(1).optional().describe('只截取该选择器命中的元素'),
+      full_page: z.boolean().optional().describe('截取整页而非视口，默认 false（仅对全页截图有效）'),
       save_to: z.string().min(1).optional().describe('同时保存到本地文件路径'),
       timeout: zTimeout('10 秒'),
     },
@@ -54,20 +55,21 @@ export const inspectionTools: ToolDef[] = [
       const fullPage = args.full_page === true;
       const quality = args.quality === undefined ? undefined : parseNonNegativeInt(args.quality, 'quality', 100);
       const timeout = actionTimeout(ctx.config, args.timeout);
-      const selector = typeof args.selector === 'string' && args.selector.trim() !== '' ? args.selector : undefined;
+      const hasTarget = args.ref !== undefined || (typeof args.selector === 'string' && args.selector.trim() !== '');
 
       let buffer: Buffer;
-      if (selector) {
-        const locator = resolveLocator(page, selector, ctx.config.testIdAttribute);
-        const handle = await locator.elementHandle().catch(() => null);
-        if (!handle) throw new ToolError(`找不到元素：${selector}`, 'not_found');
+      let targetDesc = '';
+      if (hasTarget) {
+        const tabId = ctx.session.currentTabId();
+        const target = resolveTarget(page, ctx.session, tabId, args);
+        targetDesc = ` of ${target.via}`;
         buffer = await guardTimeout(
-          handle.screenshot({ type: format, quality: format === 'jpeg' ? quality : undefined }),
-          '元素截图'
+          target.locator.screenshot({ type: format, quality: format === 'jpeg' ? quality : undefined, timeout }),
+          `元素截图 ${target.via}`
         );
       } else {
         buffer = await guardTimeout(
-          page.screenshot({ type: format, quality: format === 'jpeg' ? quality : undefined, fullPage }),
+          page.screenshot({ type: format, quality: format === 'jpeg' ? quality : undefined, fullPage, timeout }),
           '页面截图'
         );
       }
@@ -79,7 +81,7 @@ export const inspectionTools: ToolDef[] = [
       }
 
       const size = buffer.length;
-      const text = `screenshot (${format}, ${size} bytes)${savedTo ? `\nsaved to: ${savedTo}` : ''}`;
+      const text = `screenshot${targetDesc} (${format}, ${size} bytes)${savedTo ? `\nsaved to: ${savedTo}` : ''}`;
       return {
         text,
         image: { data: buffer.toString('base64'), mimeType: format === 'png' ? 'image/png' : 'image/jpeg' },
